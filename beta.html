@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>電子工作 計算ツールキット — 抵抗・555・LED・分圧・RC</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      background-color: #f1f5f9;
+      color: #0f172a;
+    }
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .tab-btn.active {
+      background-color: #0f172a;
+      color: #38bdf8;
+      border-color: #38bdf8;
+    }
+    .color-chip {
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .color-chip:hover {
+      transform: translateY(-1px);
+    }
+    .color-chip.selected {
+      outline: 2px solid #0284c7;
+      outline-offset: 2px;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+  <!-- Header -->
+  <header class="bg-slate-900 text-slate-100 border-b border-slate-800 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-sky-500/15 border border-sky-400/40 flex items-center justify-center text-sky-400">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 12h4l2-5 4 10 4-10 2 5h4" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">電子工作 計算ツールキット</h1>
+          <p class="text-xs text-slate-400">抵抗カラーコード・NE555・LED抵抗・分圧・オームの法則・RCフィルタ</p>
+        </div>
+      </div>
+      <div class="text-xs text-slate-400 hidden sm:flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-full border border-slate-700">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span>E12 / E24 標準系列対応・リアルタイム計算</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="max-w-6xl mx-auto px-4 pb-2.5 flex gap-1.5 overflow-x-auto no-scrollbar" aria-label="計算ツール切り替え">
+      <button type="button" data-tab="resistor" class="tab-btn active shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        抵抗カラーコード
+      </button>
+      <button type="button" data-tab="ne555" class="tab-btn shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        NE555 タイマー
+      </button>
+      <button type="button" data-tab="led" class="tab-btn shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        LED 制限抵抗
+      </button>
+      <button type="button" data-tab="parallel" class="tab-btn shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        並列・直列抵抗
+      </button>
+      <button type="button" data-tab="divider" class="tab-btn shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        分圧・オームの法則
+      </button>
+      <button type="button" data-tab="rc" class="tab-btn shrink-0 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition">
+        RC 時定数 / フィルタ
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+
+    <!-- ==================== TAB 1: RESISTOR COLOR CODE ==================== -->
+    <section id="panel-resistor" class="tab-panel space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-3">
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">抵抗カラーコード計算</h2>
+            <span class="hidden sm:inline text-xs text-slate-500">帯をクリックして色を選択</span>
+          </div>
+          <div class="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+            <button type="button" id="res-mode-4" class="px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm">4本帯 (一般)</button>
+            <button type="button" id="res-mode-5" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900">5本帯 (精密)</button>
+          </div>
+        </div>
+
+        <!-- Compact Top Row: Left-aligned Resistor SVG + Right-aligned Result & Min/Max -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-slate-50 rounded-xl p-3.5 sm:p-4 border border-slate-200/80 mb-3">
+          <div class="flex flex-col items-start shrink-0">
+            <svg id="resistor-svg" viewBox="0 0 440 120" class="w-64 sm:w-80 h-auto drop-shadow-sm" aria-label="抵抗器イラスト">
+              <!-- Leads -->
+              <rect x="8" y="56" width="76" height="8" rx="2" fill="#94a3b8" />
+              <rect x="356" y="56" width="76" height="8" rx="2" fill="#94a3b8" />
+              <!-- Body -->
+              <path d="M 80 28 Q 80 18 95 18 L 125 18 Q 138 18 145 26 L 295 26 Q 302 18 315 18 L 345 18 Q 360 18 360 28 L 360 92 Q 360 102 345 102 L 315 102 Q 302 102 295 94 L 145 94 Q 138 102 125 102 L 95 102 Q 80 102 80 92 Z" fill="#e7cfa0" stroke="#c4a66d" stroke-width="2" />
+              <path d="M 95 23 L 125 23 L 145 31 L 295 31 L 315 23 L 345 23" fill="none" stroke="#f5e6c8" stroke-width="3" stroke-linecap="round" opacity="0.7" />
+              <!-- Bands (clickable) -->
+              <rect id="svg-band-0" data-band="0" x="105" y="19" width="18" height="82" rx="2" fill="#eab308" class="cursor-pointer hover:opacity-85 transition" />
+              <rect id="svg-band-1" data-band="1" x="155" y="27" width="18" height="66" rx="2" fill="#a855f7" class="cursor-pointer hover:opacity-85 transition" />
+              <rect id="svg-band-2" data-band="2" x="195" y="27" width="18" height="66" rx="2" fill="#ef4444" class="cursor-pointer hover:opacity-85 transition" />
+              <rect id="svg-band-3" data-band="3" x="235" y="27" width="18" height="66" rx="2" fill="#ef4444" class="hidden cursor-pointer hover:opacity-85 transition" />
+              <rect id="svg-band-tol" data-band="tol" x="312" y="19" width="18" height="82" rx="2" fill="#d97706" class="cursor-pointer hover:opacity-85 transition" />
+              <rect id="svg-band-ring" x="102" y="16" width="24" height="88" rx="4" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="4 2" pointer-events="none" />
+            </svg>
+            <div id="res-band-labels" class="flex flex-wrap gap-1.5 mt-1.5 text-[11px] text-slate-600 font-medium"></div>
+          </div>
+
+          <!-- Right Side: Result + Min/Max + Presets -->
+          <div class="flex-1 w-full md:w-auto flex flex-col sm:flex-row md:flex-col lg:flex-row items-start sm:items-center justify-between gap-3 bg-white rounded-xl p-3.5 border border-slate-200 shadow-sm">
+            <div>
+              <div class="flex items-baseline gap-2.5">
+                <div id="res-result-main" class="text-2xl sm:text-3xl font-bold font-mono-num text-slate-900">4.7 kΩ</div>
+                <div id="res-result-tol" class="text-xs sm:text-sm font-semibold text-sky-600 font-mono-num">許容差 ±5%</div>
+              </div>
+              <div class="flex items-center gap-4 mt-1.5 text-xs">
+                <div><span class="text-slate-400">最小:</span> <span id="res-result-min" class="font-mono-num font-semibold text-slate-700">4.465 kΩ</span></div>
+                <div><span class="text-slate-400">最大:</span> <span id="res-result-max" class="font-mono-num font-semibold text-slate-700">4.935 kΩ</span></div>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-1 max-w-xs">
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="220">220Ω</button>
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="330">330Ω</button>
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="1000">1kΩ</button>
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="4700">4.7kΩ</button>
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="10000">10kΩ</button>
+              <button type="button" class="res-preset px-2 py-1 text-xs font-mono-num bg-slate-100 hover:bg-sky-50 hover:text-sky-700 rounded border border-slate-200" data-ohm="100000">100kΩ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Packed Input Controls: Band Tabs + Color Palette + Reverse Lookup -->
+        <div class="bg-slate-50 rounded-xl p-3.5 sm:p-4 border border-slate-200 mb-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+            <span class="text-xs font-bold text-slate-700">色帯の選択とカラー指定</span>
+            <label class="inline-flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+              <input id="res-auto-next" type="checkbox" checked class="rounded border-slate-300 text-sky-600 focus:ring-sky-500" />
+              <span>選択後に次の帯へ自動移動</span>
+            </label>
+          </div>
+          <div id="res-band-tabs" class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3"></div>
+          <div id="res-active-palette" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2"></div>
+        </div>
+
+        <!-- Compact Reverse Lookup -->
+        <div class="bg-slate-50 rounded-xl px-4 py-3 border border-slate-200 flex flex-wrap items-center gap-3">
+          <span class="text-xs font-bold text-slate-700">数値から逆引き:</span>
+          <input id="res-rev-val" type="number" step="any" min="0.01" value="4.7" aria-label="抵抗値" class="w-24 px-2.5 py-1 rounded-lg border border-slate-300 bg-white font-mono-num text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+          <select id="res-rev-unit" aria-label="単位" class="px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+            <option value="1">Ω</option>
+            <option value="1000" selected>kΩ</option>
+            <option value="1000000">MΩ</option>
+          </select>
+          <select id="res-rev-tol" aria-label="許容差" class="px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none">
+            <option value="5" selected>±5% (金)</option>
+            <option value="1">±1% (茶)</option>
+            <option value="2">±2% (赤)</option>
+            <option value="0.5">±0.5% (緑)</option>
+            <option value="10">±10% (銀)</option>
+          </select>
+          <button type="button" id="res-rev-btn" class="px-3.5 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition">色帯に変換</button>
+          <div id="res-rev-note" class="text-xs text-slate-600 font-medium"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 2: NE555 TIMER ==================== -->
+    <section id="panel-ne555" class="tab-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">NE555 タイマーIC 計算</h2>
+            <p class="text-xs text-slate-500">無安定（発振）モードと単安定（ワンショット）モードの周波数・時間・波形を計算します。</p>
+          </div>
+          <div class="inline-flex rounded-lg bg-slate-100 p-1 border border-slate-200">
+            <button type="button" id="n555-mode-astable" class="px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm">無安定 (発振)</button>
+            <button type="button" id="n555-mode-mono" class="px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900">単安定 (ワンショット)</button>
+          </div>
+        </div>
+
+        <!-- Astable Panel -->
+        <div id="n555-astable-box" class="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+          <div class="md:col-span-6 xl:col-span-5 space-y-2.5">
+            <!-- Interactive Astable Circuit Diagram with Direct Inputs -->
+            <div class="bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 mb-2">
+                <span class="font-semibold">無安定回路図 — 回路上の値を直接入力できます</span>
+                <span class="text-[11px] text-sky-400">Pin 1〜8 配線</span>
+              </div>
+              <div class="relative w-full aspect-[500/320] bg-slate-950 rounded-lg overflow-hidden select-none">
+                <svg viewBox="0 0 500 320" class="w-full h-full block" aria-label="NE555 無安定マルチバイブレータ回路図">
+                  <!-- VCC rail -->
+                  <line x1="190" y1="24" x2="430" y2="24" stroke="#f87171" stroke-width="2"/>
+                  <text x="160" y="28" fill="#f87171" font-size="11" font-weight="bold" font-family="monospace">VCC</text>
+                  <!-- GND rail -->
+                  <line x1="190" y1="296" x2="470" y2="296" stroke="#94a3b8" stroke-width="2"/>
+                  <text x="160" y="300" fill="#94a3b8" font-size="11" font-weight="bold" font-family="monospace">GND</text>
+
+                  <!-- Leader lines from left inputs to R1, R2, C -->
+                  <line x1="158" y1="70" x2="206" y2="70" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>
+                  <line x1="158" y1="150" x2="206" y2="150" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>
+                  <line x1="158" y1="230" x2="198" y2="230" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>
+
+                  <!-- RC Ladder vertical line at x=218 -->
+                  <line x1="218" y1="24" x2="218" y2="48" stroke="#cbd5e1" stroke-width="2"/>
+                  <rect x="207" y="48" width="22" height="44" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                  <text x="218" y="74" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">R1</text>
+
+                  <line x1="218" y1="92" x2="218" y2="128" stroke="#cbd5e1" stroke-width="2"/>
+                  <circle cx="218" cy="110" r="3.5" fill="#f59e0b"/>
+                  <line x1="218" y1="110" x2="290" y2="110" stroke="#f59e0b" stroke-width="2"/>
+
+                  <rect x="207" y="128" width="22" height="44" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                  <text x="218" y="154" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">R2</text>
+
+                  <line x1="218" y1="172" x2="218" y2="224" stroke="#cbd5e1" stroke-width="2"/>
+                  <circle cx="218" cy="198" r="3.5" fill="#34d399"/>
+                  <line x1="218" y1="198" x2="290" y2="198" stroke="#34d399" stroke-width="2"/>
+                  <line x1="262" y1="198" x2="262" y2="154" stroke="#34d399" stroke-width="2"/>
+                  <line x1="262" y1="154" x2="290" y2="154" stroke="#34d399" stroke-width="2"/>
+
+                  <line x1="201" y1="224" x2="235" y2="224" stroke="#34d399" stroke-width="3.5"/>
+                  <line x1="201" y1="235" x2="235" y2="235" stroke="#34d399" stroke-width="3.5"/>
+                  <text x="242" y="234" fill="#34d399" font-size="11" font-weight="bold" font-family="monospace">C</text>
+                  <line x1="218" y1="235" x2="218" y2="296" stroke="#cbd5e1" stroke-width="2"/>
+
+                  <!-- NE555 IC Body -->
+                  <rect x="290" y="68" width="125" height="170" rx="7" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                  <text x="352" y="148" text-anchor="middle" fill="#f8fafc" font-size="15" font-weight="bold" font-family="monospace">NE555</text>
+                  <text x="352" y="166" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">タイマーIC</text>
+
+                  <!-- Top Pins -->
+                  <line x1="323" y1="24" x2="323" y2="68" stroke="#f87171" stroke-width="2"/>
+                  <text x="323" y="84" text-anchor="middle" fill="#fca5a5" font-size="10" font-family="monospace">8:VCC</text>
+                  <line x1="383" y1="24" x2="383" y2="68" stroke="#f87171" stroke-width="2"/>
+                  <text x="383" y="84" text-anchor="middle" fill="#fca5a5" font-size="10" font-family="monospace">4:RST</text>
+
+                  <!-- Left Pins -->
+                  <text x="297" y="114" fill="#fbbf24" font-size="10" font-family="monospace">7:DISCH</text>
+                  <text x="297" y="158" fill="#6ee7b7" font-size="10" font-family="monospace">6:THRES</text>
+                  <text x="297" y="202" fill="#6ee7b7" font-size="10" font-family="monospace">2:TRIG</text>
+
+                  <!-- Right Pin -->
+                  <text x="409" y="158" text-anchor="end" fill="#38bdf8" font-size="10" font-family="monospace">3:OUT</text>
+                  <line x1="415" y1="154" x2="470" y2="154" stroke="#38bdf8" stroke-width="2.5"/>
+                  <circle cx="470" cy="154" r="4" fill="#38bdf8"/>
+                  <text x="474" y="144" text-anchor="end" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">OUT</text>
+
+                  <!-- Bottom Pins -->
+                  <line x1="323" y1="238" x2="323" y2="296" stroke="#94a3b8" stroke-width="2"/>
+                  <text x="323" y="230" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="monospace">1:GND</text>
+                  <text x="383" y="230" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="monospace">5:CTRL</text>
+                  <line x1="383" y1="238" x2="383" y2="262" stroke="#94a3b8" stroke-width="1.5"/>
+                  <line x1="373" y1="262" x2="393" y2="262" stroke="#94a3b8" stroke-width="2.2"/>
+                  <line x1="373" y1="269" x2="393" y2="269" stroke="#94a3b8" stroke-width="2.2"/>
+                  <line x1="383" y1="269" x2="383" y2="296" stroke="#94a3b8" stroke-width="1.5"/>
+                  <text x="398" y="270" fill="#64748b" font-size="9" font-family="monospace">0.01µF</text>
+                </svg>
+
+                <!-- Perfectly Aligned Direct Inputs -->
+                <div class="absolute -translate-y-1/2 flex items-center gap-1 bg-slate-900/95 border border-sky-500/70 rounded-lg px-1.5 py-1 shadow-md" style="left: 2%; top: 21.875%;">
+                  <span class="text-[11px] font-bold text-sky-400 font-mono-num">R1</span>
+                  <input id="n555-r1" type="number" step="any" min="0.01" value="10" aria-label="R1" class="w-12 sm:w-14 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-sky-400 focus:outline-none" />
+                  <select id="n555-r1-unit" aria-label="R1単位" class="px-1 py-0.5 rounded bg-slate-800 text-slate-200 text-xs border border-slate-700 focus:outline-none">
+                    <option value="1">Ω</option>
+                    <option value="1000" selected>kΩ</option>
+                    <option value="1000000">MΩ</option>
+                  </select>
+                </div>
+
+                <div class="absolute -translate-y-1/2 flex items-center gap-1 bg-slate-900/95 border border-sky-500/70 rounded-lg px-1.5 py-1 shadow-md" style="left: 2%; top: 46.875%;">
+                  <span class="text-[11px] font-bold text-sky-400 font-mono-num">R2</span>
+                  <input id="n555-r2" type="number" step="any" min="0.01" value="68" aria-label="R2" class="w-12 sm:w-14 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-sky-400 focus:outline-none" />
+                  <select id="n555-r2-unit" aria-label="R2単位" class="px-1 py-0.5 rounded bg-slate-800 text-slate-200 text-xs border border-slate-700 focus:outline-none">
+                    <option value="1">Ω</option>
+                    <option value="1000" selected>kΩ</option>
+                    <option value="1000000">MΩ</option>
+                  </select>
+                </div>
+
+                <div class="absolute -translate-y-1/2 flex items-center gap-1 bg-slate-900/95 border border-emerald-500/70 rounded-lg px-1.5 py-1 shadow-md" style="left: 2%; top: 71.875%;">
+                  <span class="text-[11px] font-bold text-emerald-400 font-mono-num">C</span>
+                  <input id="n555-c" type="number" step="any" min="0.01" value="10" aria-label="コンデンサC" class="w-12 sm:w-14 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-emerald-400 focus:outline-none" />
+                  <select id="n555-c-unit" aria-label="C単位" class="px-1 py-0.5 rounded bg-slate-800 text-slate-200 text-xs border border-slate-700 focus:outline-none">
+                    <option value="1e-12">pF</option>
+                    <option value="1e-9">nF</option>
+                    <option value="1e-6" selected>µF</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Presets & Formula -->
+              <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                <span class="text-[11px] text-slate-400 mr-1">プリセット:</span>
+                <button type="button" class="n555-preset px-2.5 py-1 text-xs bg-slate-800 text-slate-200 hover:bg-sky-600 hover:text-white rounded border border-slate-700 transition" data-r1="10" data-r1u="1000" data-r2="68" data-r2u="1000" data-c="10" data-cu="1e-6">約1Hz (Lチカ)</button>
+                <button type="button" class="n555-preset px-2.5 py-1 text-xs bg-slate-800 text-slate-200 hover:bg-sky-600 hover:text-white rounded border border-slate-700 transition" data-r1="1" data-r1u="1000" data-r2="6.8" data-r2u="1000" data-c="100" data-cu="1e-9">約1kHz (ブザー)</button>
+                <button type="button" class="n555-preset px-2.5 py-1 text-xs bg-slate-800 text-slate-200 hover:bg-sky-600 hover:text-white rounded border border-slate-700 transition" data-r1="1" data-r1u="1000" data-r2="18.4" data-r2u="1000" data-c="1" data-cu="1e-9">約38kHz (赤外線)</button>
+              </div>
+            </div>
+            <div class="bg-slate-50 text-slate-600 p-3 rounded-xl border border-slate-200 text-[11px] font-mono-num flex flex-wrap gap-x-4 gap-y-1">
+              <span>T_high = 0.693×(R1+R2)×C</span>
+              <span>T_low = 0.693×R2×C</span>
+              <span>f = 1/(T_high+T_low)</span>
+            </div>
+          </div>
+
+          <div class="md:col-span-6 xl:col-span-7 space-y-3">
+            <!-- Readout Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5">
+                <span class="text-xs text-sky-700 font-medium">周波数 (f)</span>
+                <div id="n555-out-freq" class="text-xl sm:text-2xl font-bold font-mono-num text-sky-950 mt-0.5">0.988 Hz</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <span class="text-xs text-slate-500 font-medium">周期 (T)</span>
+                <div id="n555-out-period" class="text-xl sm:text-2xl font-bold font-mono-num text-slate-900 mt-0.5">1.012 s</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 col-span-2 sm:col-span-1">
+                <span class="text-xs text-slate-500 font-medium">デューティ比</span>
+                <div id="n555-out-duty" class="text-xl sm:text-2xl font-bold font-mono-num text-slate-900 mt-0.5">53.4 %</div>
+              </div>
+              <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3">
+                <span class="text-xs text-emerald-700 font-medium">High時間 (T_high)</span>
+                <div id="n555-out-thigh" class="text-lg font-bold font-mono-num text-emerald-950 mt-0.5">540.6 ms</div>
+              </div>
+              <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3">
+                <span class="text-xs text-amber-700 font-medium">Low時間 (T_low)</span>
+                <div id="n555-out-tlow" class="text-lg font-bold font-mono-num text-amber-950 mt-0.5">471.3 ms</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 col-span-2 sm:col-span-1">
+                <span class="text-xs text-slate-500 font-medium">R1 / R2 比率注意</span>
+                <div id="n555-out-note" class="text-xs text-slate-600 mt-1">正常動作範囲</div>
+              </div>
+            </div>
+
+            <!-- Waveform Canvas -->
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                <span class="font-semibold text-slate-200">出力波形 (OUT) & コンデンサ電圧 (Vc)</span>
+                <span class="font-mono-num">しきい値: 1/3 Vcc 〜 2/3 Vcc</span>
+              </div>
+              <canvas id="n555-wave-canvas" width="640" height="175" class="w-full h-auto rounded-lg bg-slate-950"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monostable Panel -->
+        <div id="n555-mono-box" class="hidden grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+          <div class="md:col-span-6 xl:col-span-5 space-y-2.5">
+            <div class="bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 mb-2">
+                <span class="font-semibold">単安定回路図 — 回路上の値を直接入力できます</span>
+                <span class="text-[11px] text-sky-400">ワンショット</span>
+              </div>
+              <div class="relative w-full aspect-[500/320] bg-slate-950 rounded-lg overflow-hidden select-none">
+                <svg viewBox="0 0 500 320" class="w-full h-full block" aria-label="NE555 単安定マルチバイブレータ回路図">
+                  <line x1="190" y1="24" x2="430" y2="24" stroke="#f87171" stroke-width="2"/>
+                  <text x="160" y="28" fill="#f87171" font-size="11" font-weight="bold" font-family="monospace">VCC</text>
+                  <line x1="190" y1="296" x2="470" y2="296" stroke="#94a3b8" stroke-width="2"/>
+                  <text x="160" y="300" fill="#94a3b8" font-size="11" font-weight="bold" font-family="monospace">GND</text>
+
+                  <line x1="158" y1="86" x2="206" y2="86" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>
+                  <line x1="158" y1="220" x2="198" y2="220" stroke="#34d399" stroke-width="1.2" stroke-dasharray="3 3" opacity="0.7"/>
+
+                  <line x1="218" y1="24" x2="218" y2="62" stroke="#cbd5e1" stroke-width="2"/>
+                  <rect x="207" y="62" width="22" height="48" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+                  <text x="218" y="90" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">R</text>
+
+                  <line x1="218" y1="110" x2="218" y2="214" stroke="#cbd5e1" stroke-width="2"/>
+                  <circle cx="218" cy="126" r="3.5" fill="#f59e0b"/>
+                  <line x1="218" y1="126" x2="290" y2="126" stroke="#f59e0b" stroke-width="2"/>
+                  <circle cx="218" cy="158" r="3.5" fill="#34d399"/>
+                  <line x1="218" y1="158" x2="290" y2="158" stroke="#34d399" stroke-width="2"/>
+
+                  <line x1="201" y1="214" x2="235" y2="214" stroke="#34d399" stroke-width="3.5"/>
+                  <line x1="201" y1="225" x2="235" y2="225" stroke="#34d399" stroke-width="3.5"/>
+                  <text x="242" y="224" fill="#34d399" font-size="11" font-weight="bold" font-family="monospace">C</text>
+                  <line x1="218" y1="225" x2="218" y2="296" stroke="#cbd5e1" stroke-width="2"/>
+
+                  <!-- TRIG on Pin 2 -->
+                  <line x1="252" y1="202" x2="290" y2="202" stroke="#f59e0b" stroke-width="2"/>
+                  <circle cx="252" cy="202" r="3.5" fill="#f59e0b"/>
+                  <text x="246" y="206" text-anchor="end" fill="#fbbf24" font-size="10" font-weight="bold" font-family="monospace">TRIG</text>
+
+                  <rect x="290" y="68" width="125" height="170" rx="7" fill="#1e293b" stroke="#64748b" stroke-width="2"/>
+                  <text x="352" y="148" text-anchor="middle" fill="#f8fafc" font-size="15" font-weight="bold" font-family="monospace">NE555</text>
+                  <text x="352" y="166" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">タイマーIC</text>
+
+                  <line x1="323" y1="24" x2="323" y2="68" stroke="#f87171" stroke-width="2"/>
+                  <text x="323" y="84" text-anchor="middle" fill="#fca5a5" font-size="10" font-family="monospace">8:VCC</text>
+                  <line x1="383" y1="24" x2="383" y2="68" stroke="#f87171" stroke-width="2"/>
+                  <text x="383" y="84" text-anchor="middle" fill="#fca5a5" font-size="10" font-family="monospace">4:RST</text>
+
+                  <text x="297" y="130" fill="#fbbf24" font-size="10" font-family="monospace">7:DISCH</text>
+                  <text x="297" y="162" fill="#6ee7b7" font-size="10" font-family="monospace">6:THRES</text>
+                  <text x="297" y="206" fill="#fbbf24" font-size="10" font-family="monospace">2:TRIG</text>
+
+                  <text x="409" y="158" text-anchor="end" fill="#38bdf8" font-size="10" font-family="monospace">3:OUT</text>
+                  <line x1="415" y1="154" x2="470" y2="154" stroke="#38bdf8" stroke-width="2.5"/>
+                  <circle cx="470" cy="154" r="4" fill="#38bdf8"/>
+                  <text x="474" y="144" text-anchor="end" fill="#38bdf8" font-size="11" font-weight="bold" font-family="monospace">OUT</text>
+
+                  <line x1="323" y1="238" x2="323" y2="296" stroke="#94a3b8" stroke-width="2"/>
+                  <text x="323" y="230" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="monospace">1:GND</text>
+                  <text x="383" y="230" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="monospace">5:CTRL</text>
+                  <line x1="383" y1="238" x2="383" y2="262" stroke="#94a3b8" stroke-width="1.5"/>
+                  <line x1="373" y1="262" x2="393" y2="262" stroke="#94a3b8" stroke-width="2.2"/>
+                  <line x1="373" y1="269" x2="393" y2="269" stroke="#94a3b8" stroke-width="2.2"/>
+                  <line x1="383" y1="269" x2="383" y2="296" stroke="#94a3b8" stroke-width="1.5"/>
+                  <text x="398" y="270" fill="#64748b" font-size="9" font-family="monospace">0.01µF</text>
+                </svg>
+
+                <div class="absolute -translate-y-1/2 flex items-center gap-1 bg-slate-900/95 border border-sky-500/70 rounded-lg px-1.5 py-1 shadow-md" style="left: 2%; top: 26.875%;">
+                  <span class="text-[11px] font-bold text-sky-400 font-mono-num">R</span>
+                  <input id="n555-m-r" type="number" step="any" min="0.01" value="100" aria-label="単安定R" class="w-12 sm:w-14 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-sky-400 focus:outline-none" />
+                  <select id="n555-m-r-unit" aria-label="単安定R単位" class="px-1 py-0.5 rounded bg-slate-800 text-slate-200 text-xs border border-slate-700 focus:outline-none">
+                    <option value="1">Ω</option>
+                    <option value="1000" selected>kΩ</option>
+                    <option value="1000000">MΩ</option>
+                  </select>
+                </div>
+
+                <div class="absolute -translate-y-1/2 flex items-center gap-1 bg-slate-900/95 border border-emerald-500/70 rounded-lg px-1.5 py-1 shadow-md" style="left: 2%; top: 68.75%;">
+                  <span class="text-[11px] font-bold text-emerald-400 font-mono-num">C</span>
+                  <input id="n555-m-c" type="number" step="any" min="0.01" value="47" aria-label="単安定C" class="w-12 sm:w-14 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-emerald-400 focus:outline-none" />
+                  <select id="n555-m-c-unit" aria-label="単安定C単位" class="px-1 py-0.5 rounded bg-slate-800 text-slate-200 text-xs border border-slate-700 focus:outline-none">
+                    <option value="1e-12">pF</option>
+                    <option value="1e-9">nF</option>
+                    <option value="1e-6" selected>µF</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="bg-slate-50 text-slate-600 p-3 rounded-xl border border-slate-200 text-[11px] font-mono-num">
+              T = ln(3) × R × C ≈ 1.1 × R × C (TRIGが 1/3 Vcc 以下で発火)
+            </div>
+          </div>
+
+          <div class="md:col-span-6 xl:col-span-7 space-y-3">
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-4">
+              <span class="text-xs text-sky-700 font-medium">出力パルス幅 (T)</span>
+              <div id="n555-m-out" class="text-3xl font-bold font-mono-num text-sky-950 mt-1">5.16 s</div>
+              <p class="text-xs text-sky-800/80 mt-1">チャタリング防止や一定時間タイマーに便利です。</p>
+            </div>
+            <div class="bg-slate-900 rounded-xl p-4 border border-slate-800">
+              <div class="text-xs font-semibold text-slate-200 mb-2">単安定パルス動作イメージ</div>
+              <svg viewBox="0 0 500 160" class="w-full h-auto bg-slate-950 rounded-lg">
+                <!-- Trigger -->
+                <text x="14" y="28" fill="#94a3b8" font-size="11" font-family="monospace">TRIG (2)</text>
+                <polyline points="80,20 130,20 135,45 155,45 160,20 480,20" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+                <!-- Output -->
+                <text x="14" y="95" fill="#94a3b8" font-size="11" font-family="monospace">OUT (3)</text>
+                <polyline points="80,105 135,105 135,65 360,65 360,105 480,105" fill="none" stroke="#38bdf8" stroke-width="2.5" />
+                <!-- Width arrow -->
+                <line x1="135" y1="125" x2="360" y2="125" stroke="#10b981" stroke-width="1.5" />
+                <polygon points="135,125 143,121 143,129" fill="#10b981" />
+                <polygon points="360,125 352,121 352,129" fill="#10b981" />
+                <text id="n555-m-svg-label" x="247" y="145" text-anchor="middle" fill="#34d399" font-size="12" font-family="monospace">T = 5.16 s</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 3: LED RESISTOR ==================== -->
+    <section id="panel-led" class="tab-panel hidden space-y-4">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">LED 電流制限抵抗 計算</h2>
+            <p class="text-xs text-slate-500">回路図上の電源電圧・LED電圧・目標電流を直接書き換えて計算できます。</p>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" class="led-vf-btn px-2 py-1 text-[11px] font-semibold rounded border border-red-200 bg-red-50 text-red-700 hover:bg-red-100" data-vf="2.0">赤 2.0V</button>
+            <button type="button" class="led-vf-btn px-2 py-1 text-[11px] font-semibold rounded border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" data-vf="2.1">黄/緑 2.1V</button>
+            <button type="button" class="led-vf-btn px-2 py-1 text-[11px] font-semibold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100" data-vf="3.2">青/白 3.2V</button>
+            <button type="button" class="led-vf-btn px-2 py-1 text-[11px] font-semibold rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100" data-vf="1.2">赤外 1.2V</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+          <!-- Interactive LED Schematic with Direct Inputs -->
+          <div class="lg:col-span-7 bg-slate-900 rounded-xl p-3.5 border border-slate-800">
+            <div class="flex items-center justify-between text-xs text-slate-300 mb-2">
+              <span class="font-semibold">LED 回路図 — 値を直接入力</span>
+              <div class="flex items-center gap-1">
+                <span class="text-[11px] text-slate-400 mr-1">電源:</span>
+                <button type="button" class="led-vcc-btn px-1.5 py-0.5 text-[11px] bg-slate-800 text-slate-200 border border-slate-700 rounded hover:bg-sky-600" data-v="3.3">3.3V</button>
+                <button type="button" class="led-vcc-btn px-1.5 py-0.5 text-[11px] bg-slate-800 text-slate-200 border border-slate-700 rounded hover:bg-sky-600" data-v="5">5V</button>
+                <button type="button" class="led-vcc-btn px-1.5 py-0.5 text-[11px] bg-slate-800 text-slate-200 border border-slate-700 rounded hover:bg-sky-600" data-v="9">9V</button>
+                <button type="button" class="led-vcc-btn px-1.5 py-0.5 text-[11px] bg-slate-800 text-slate-200 border border-slate-700 rounded hover:bg-sky-600" data-v="12">12V</button>
+              </div>
+            </div>
+
+            <div class="relative w-full aspect-[520/220] bg-slate-950 rounded-lg overflow-hidden select-none">
+              <svg viewBox="0 0 520 220" class="w-full h-full block" aria-label="LED制限抵抗 入力回路図">
+                <!-- Vcc node -->
+                <circle cx="58" cy="95" r="5" fill="#f87171"/>
+                <line x1="63" y1="95" x2="175" y2="95" stroke="#cbd5e1" stroke-width="2.2"/>
+
+                <!-- Current arrow If -->
+                <line x1="95" y1="78" x2="145" y2="78" stroke="#38bdf8" stroke-width="1.8"/>
+                <polygon points="145,78 137,74 137,82" fill="#38bdf8"/>
+
+                <!-- Resistor R (calculated) -->
+                <rect x="175" y="81" width="76" height="28" rx="4" fill="#1e293b" stroke="#38bdf8" stroke-width="2.2"/>
+                <text id="svg-led-r" x="213" y="100" text-anchor="middle" fill="#38bdf8" font-size="13" font-weight="bold" font-family="monospace">200 Ω</text>
+                <text x="213" y="72" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="sans-serif">制限抵抗 R (E24)</text>
+
+                <line x1="251" y1="95" x2="325" y2="95" stroke="#cbd5e1" stroke-width="2.2"/>
+
+                <!-- LED Diode Symbol -->
+                <polygon points="325,75 325,115 363,95" fill="#fbbf24" stroke="#f59e0b" stroke-width="2.2"/>
+                <line x1="363" y1="75" x2="363" y2="115" stroke="#f59e0b" stroke-width="3.5"/>
+                <!-- Light arrows -->
+                <line x1="344" y1="68" x2="358" y2="54" stroke="#fde047" stroke-width="2"/>
+                <polygon points="358,54 350,55 356,61" fill="#fde047"/>
+                <line x1="358" y1="72" x2="372" y2="58" stroke="#fde047" stroke-width="2"/>
+                <polygon points="372,58 364,59 370,65" fill="#fde047"/>
+
+                <!-- To GND -->
+                <line x1="363" y1="95" x2="462" y2="95" stroke="#cbd5e1" stroke-width="2.2"/>
+                <line x1="462" y1="95" x2="462" y2="132" stroke="#94a3b8" stroke-width="2.2"/>
+                <line x1="444" y1="132" x2="480" y2="132" stroke="#94a3b8" stroke-width="2.5"/>
+                <line x1="450" y1="139" x2="474" y2="139" stroke="#94a3b8" stroke-width="2.2"/>
+                <line x1="456" y1="146" x2="468" y2="146" stroke="#94a3b8" stroke-width="2.2"/>
+                <text x="462" y="84" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="bold" font-family="monospace">GND</text>
+              </svg>
+
+              <!-- Direct Input: Vcc (top-left of Vcc node) -->
+              <div class="absolute flex items-center gap-1 bg-slate-900/95 border border-rose-500/70 rounded-lg px-2 py-1 shadow-md" style="left: 2%; top: 13%;">
+                <span class="text-[11px] font-bold text-rose-400 font-mono-num">Vcc</span>
+                <input id="led-vcc" type="number" step="0.1" min="0.1" value="5" aria-label="電源電圧Vcc" class="w-14 px-1.5 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-rose-400 focus:outline-none" />
+                <span class="text-[11px] text-slate-300">V</span>
+              </div>
+
+              <!-- Direct Input: If (above wire) -->
+              <div class="absolute -translate-x-1/2 flex items-center gap-1 bg-slate-900/95 border border-sky-500/70 rounded-lg px-2 py-1 shadow-md" style="left: 23%; top: 13%;">
+                <span class="text-[11px] font-bold text-sky-400 font-mono-num">If</span>
+                <input id="led-if" type="number" step="1" min="0.1" value="15" aria-label="目標電流If" class="w-12 px-1.5 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-sky-400 focus:outline-none" />
+                <span class="text-[11px] text-slate-300">mA</span>
+              </div>
+
+              <!-- Direct Input: LED Vf & Count (below LED symbol) -->
+              <div class="absolute -translate-x-1/2 flex items-center gap-1.5 bg-slate-900/95 border border-amber-500/70 rounded-lg px-2 py-1 shadow-md" style="left: 66%; top: 64%;">
+                <span class="text-[11px] font-bold text-amber-400 font-mono-num">Vf</span>
+                <input id="led-vf" type="number" step="0.1" min="0.1" value="2.0" aria-label="LED順方向電圧Vf" class="w-12 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-amber-400 focus:outline-none" />
+                <span class="text-[11px] text-slate-300">V ×</span>
+                <input id="led-count" type="number" step="1" min="1" max="20" value="1" aria-label="直列LED個数" class="w-10 px-1 py-0.5 rounded bg-slate-800 text-white font-mono-num text-xs border border-slate-700 focus:border-amber-400 focus:outline-none" />
+                <span class="text-[11px] text-slate-300">個</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- LED Calculation Results -->
+          <div class="lg:col-span-5 space-y-3">
+            <div id="led-warning" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3.5 text-xs sm:text-sm font-medium">
+              電源電圧がLEDの合計順方向電圧 (Vf × 個数) 以下です。点灯しません。
+            </div>
+
+            <div id="led-results" class="space-y-2.5">
+              <div class="grid grid-cols-2 gap-2.5">
+                <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5">
+                  <span class="text-xs text-sky-700 font-medium">計算上の抵抗値</span>
+                  <div id="led-out-r" class="text-xl sm:text-2xl font-bold font-mono-num text-sky-950 mt-0.5">200 Ω</div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5">
+                  <span class="text-xs text-emerald-700 font-medium">E24 標準抵抗値</span>
+                  <div id="led-out-e24" class="text-xl sm:text-2xl font-bold font-mono-num text-emerald-950 mt-0.5">200 Ω</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2.5">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <span class="text-xs text-slate-500 font-medium">抵抗の発熱電力</span>
+                  <div id="led-out-p" class="text-base sm:text-lg font-bold font-mono-num text-slate-900 mt-0.5">45.0 mW</div>
+                </div>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <span class="text-xs text-slate-500 font-medium">推奨ワット数 (2倍)</span>
+                  <div id="led-out-watt" class="text-base sm:text-lg font-bold font-mono-num text-slate-900 mt-0.5">1/4 W (250mW)</div>
+                </div>
+              </div>
+
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 flex items-center justify-between">
+                <span>E24標準抵抗を使用時の実電流:</span>
+                <span id="led-out-actual-if" class="font-mono-num font-bold text-slate-900 text-sm">15.0 mA</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4: VOLTAGE DIVIDER, OHM, SERIES/PARALLEL ==================== -->
+    <section id="panel-divider" class="tab-panel hidden space-y-6">
+      <!-- Voltage Divider -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex items-center gap-2.5 mb-2 pb-2 border-b border-slate-100">
+          <span class="px-2 py-0.5 rounded-md bg-sky-600 text-white text-xs font-bold">ツール 1</span>
+          <h2 class="text-lg font-bold text-slate-900">分圧回路 (Voltage Divider)</h2>
+        </div>
+        <p class="text-xs text-slate-500 mb-4">Vout = Vin × R2 / (R1 + R2) を計算します。マイコンのADC入力前の降圧などに。</p>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div class="lg:col-span-5 space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <label for="div-vin" class="block text-xs font-semibold text-slate-700 mb-1">入力電圧 Vin (V)</label>
+              <input id="div-vin" type="number" step="any" value="5" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+            </div>
+            <div>
+              <label for="div-r1" class="block text-xs font-semibold text-slate-700 mb-1">上側抵抗 R1</label>
+              <div class="flex gap-2">
+                <input id="div-r1" type="number" step="any" min="0.01" value="10" class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+                <select id="div-r1-u" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-sm">
+                  <option value="1">Ω</option>
+                  <option value="1000" selected>kΩ</option>
+                  <option value="1000000">MΩ</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="div-r2" class="block text-xs font-semibold text-slate-700 mb-1">下側抵抗 R2</label>
+              <div class="flex gap-2">
+                <input id="div-r2" type="number" step="any" min="0.01" value="10" class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+                <select id="div-r2-u" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-sm">
+                  <option value="1">Ω</option>
+                  <option value="1000" selected>kΩ</option>
+                  <option value="1000000">MΩ</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-3 flex justify-center">
+            <svg viewBox="0 0 180 200" class="w-44 h-auto">
+              <text x="90" y="18" text-anchor="middle" fill="#0f172a" font-size="12" font-weight="bold" font-family="monospace" id="svg-div-vin">Vin = 5V</text>
+              <line x1="65" y1="26" x2="65" y2="50" stroke="#475569" stroke-width="2"/>
+              <rect x="53" y="50" width="24" height="40" rx="3" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+              <text x="26" y="74" fill="#475569" font-size="11" font-family="monospace">R1</text>
+              <line x1="65" y1="90" x2="65" y2="120" stroke="#475569" stroke-width="2"/>
+              <circle cx="65" cy="105" r="3.5" fill="#0284c7"/>
+              <line x1="65" y1="105" x2="115" y2="105" stroke="#0284c7" stroke-width="2"/>
+              <text x="120" y="109" fill="#0284c7" font-size="12" font-weight="bold" font-family="monospace" id="svg-div-vout">2.50 V</text>
+              <rect x="53" y="120" width="24" height="40" rx="3" fill="#e2e8f0" stroke="#475569" stroke-width="2"/>
+              <text x="26" y="144" fill="#475569" font-size="11" font-family="monospace">R2</text>
+              <line x1="65" y1="160" x2="65" y2="180" stroke="#475569" stroke-width="2"/>
+              <line x1="50" y1="180" x2="80" y2="180" stroke="#475569" stroke-width="2"/>
+              <line x1="56" y1="185" x2="74" y2="185" stroke="#475569" stroke-width="2"/>
+              <line x1="61" y1="190" x2="69" y2="190" stroke="#475569" stroke-width="2"/>
+            </svg>
+          </div>
+
+          <div class="lg:col-span-4 space-y-3">
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-4">
+              <span class="text-xs text-sky-700 font-medium">出力電圧 Vout</span>
+              <div id="div-out-v" class="text-2xl font-bold font-mono-num text-sky-950 mt-0.5">2.500 V</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+              <span class="text-xs text-slate-500 font-medium">貫通電流 / 消費電力</span>
+              <div id="div-out-ip" class="text-sm font-bold font-mono-num text-slate-900 mt-1">0.250 mA / 1.25 mW</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ohm's Law -->
+      <div>
+        <!-- Ohm's Law -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="flex items-center gap-2.5 mb-1">
+                <span class="px-2 py-0.5 rounded-md bg-slate-800 text-white text-xs font-bold">ツール 2</span>
+                <h2 class="text-lg font-bold text-slate-900">オームの法則 & 電力</h2>
+              </div>
+              <p class="text-xs text-slate-500">4つのうち2つを入力して「計算」を押してください</p>
+            </div>
+            <button type="button" id="ohm-clear" class="text-xs text-slate-500 hover:text-slate-900 underline">クリア</button>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label for="ohm-v" class="block text-xs font-semibold text-slate-700 mb-1">電圧 V (V)</label>
+              <input id="ohm-v" type="number" step="any" placeholder="例: 5" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono-num text-sm" />
+            </div>
+            <div>
+              <label for="ohm-i" class="block text-xs font-semibold text-slate-700 mb-1">電流 I (mA)</label>
+              <input id="ohm-i" type="number" step="any" placeholder="例: 20" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono-num text-sm" />
+            </div>
+            <div>
+              <label for="ohm-r" class="block text-xs font-semibold text-slate-700 mb-1">抵抗 R (Ω)</label>
+              <input id="ohm-r" type="number" step="any" placeholder="例: 250" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono-num text-sm" />
+            </div>
+            <div>
+              <label for="ohm-p" class="block text-xs font-semibold text-slate-700 mb-1">電力 P (mW)</label>
+              <input id="ohm-p" type="number" step="any" placeholder="例: 100" class="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono-num text-sm" />
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <button type="button" id="ohm-calc-btn" class="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold transition">計算する</button>
+            <span id="ohm-msg" class="text-xs text-slate-500"></span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==================== TAB 4B: PARALLEL & SERIES RESISTORS ==================== -->
+    <section id="panel-parallel" class="tab-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="mb-4">
+          <div class="flex items-center gap-2.5 mb-1 pb-2 border-b border-slate-100">
+            <span class="px-2 py-0.5 rounded-md bg-sky-600 text-white text-xs font-bold">ツール 1</span>
+            <h2 class="text-lg font-bold text-slate-900">並列・直列 合成抵抗計算</h2>
+          </div>
+          <p class="text-xs text-slate-500">複数の抵抗値（k, M対応）を入力すると、並列接続と直列接続の合成抵抗を同時に計算します。</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div class="lg:col-span-6 space-y-4">
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <div>
+                <label for="sp-input" class="block text-xs font-semibold text-slate-700 mb-1">抵抗値リスト (カンマまたはスペース区切り)</label>
+                <input id="sp-input" type="text" value="10k, 10k" placeholder="例: 1k, 2.2k, 470" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono-num text-sm focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                <span class="text-[11px] text-slate-500 w-full">よく使う例:</span>
+                <button type="button" class="sp-preset px-2.5 py-1 text-xs font-mono-num bg-white hover:bg-sky-50 rounded border border-slate-200" data-val="10k, 10k">10k // 10k (5kΩ)</button>
+                <button type="button" class="sp-preset px-2.5 py-1 text-xs font-mono-num bg-white hover:bg-sky-50 rounded border border-slate-200" data-val="1k, 1k, 1k">1k ×3本</button>
+                <button type="button" class="sp-preset px-2.5 py-1 text-xs font-mono-num bg-white hover:bg-sky-50 rounded border border-slate-200" data-val="470, 470">470 // 470</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-sky-50 border border-sky-200 rounded-xl p-4">
+                <span class="text-xs text-sky-700 font-medium">並列合成 (R1 // R2 // ...)</span>
+                <div id="sp-parallel" class="text-2xl font-bold font-mono-num text-sky-950 mt-0.5">5 kΩ</div>
+                <div class="text-[11px] text-sky-700/80 mt-1 font-mono-num">1/R = 1/R1 + 1/R2 + ...</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <span class="text-xs text-slate-500 font-medium">直列合成 (R1 + R2 + ...)</span>
+                <div id="sp-series" class="text-2xl font-bold font-mono-num text-slate-900 mt-0.5">20 kΩ</div>
+                <div class="text-[11px] text-slate-500 mt-1 font-mono-num">R = R1 + R2 + ...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual Parallel & Series Diagram -->
+          <div class="lg:col-span-6 bg-slate-900 rounded-xl p-4 border border-slate-800 space-y-3">
+            <div class="text-xs font-semibold text-slate-200">並列・直列 接続イメージ</div>
+            <svg viewBox="0 0 420 165" class="w-full h-auto bg-slate-950 rounded-lg" aria-label="並列・直列抵抗の図">
+              <!-- Parallel on left -->
+              <text x="105" y="20" text-anchor="middle" fill="#38bdf8" font-size="11" font-weight="bold" font-family="sans-serif">並列接続</text>
+              <line x1="25" y1="80" x2="55" y2="80" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="55" y1="50" x2="55" y2="110" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="55" y1="50" x2="78" y2="50" stroke="#94a3b8" stroke-width="2"/>
+              <rect x="78" y="39" width="54" height="22" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+              <text x="105" y="54" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">R1</text>
+              <line x1="132" y1="50" x2="155" y2="50" stroke="#94a3b8" stroke-width="2"/>
+
+              <line x1="55" y1="110" x2="78" y2="110" stroke="#94a3b8" stroke-width="2"/>
+              <rect x="78" y="99" width="54" height="22" rx="3" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+              <text x="105" y="114" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">R2</text>
+              <line x1="132" y1="110" x2="155" y2="110" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="155" y1="50" x2="155" y2="110" stroke="#94a3b8" stroke-width="2"/>
+              <line x1="155" y1="80" x2="185" y2="80" stroke="#94a3b8" stroke-width="2"/>
+              <text id="svg-sp-parallel" x="105" y="148" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="monospace">合成: 5 kΩ</text>
+
+              <!-- Divider line -->
+              <line x1="210" y1="20" x2="210" y2="150" stroke="#1e293b" stroke-width="2"/>
+
+              <!-- Series on right -->
+              <text x="315" y="20" text-anchor="middle" fill="#cbd5e1" font-size="11" font-weight="bold" font-family="sans-serif">直列接続</text>
+              <line x1="228" y1="80" x2="250" y2="80" stroke="#94a3b8" stroke-width="2"/>
+              <rect x="250" y="69" width="48" height="22" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="2"/>
+              <text x="274" y="84" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">R1</text>
+              <line x1="298" y1="80" x2="322" y2="80" stroke="#94a3b8" stroke-width="2"/>
+              <rect x="322" y="69" width="48" height="22" rx="3" fill="#1e293b" stroke="#94a3b8" stroke-width="2"/>
+              <text x="346" y="84" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">R2</text>
+              <line x1="370" y1="80" x2="395" y2="80" stroke="#94a3b8" stroke-width="2"/>
+              <text id="svg-sp-series" x="315" y="148" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="bold" font-family="monospace">合成: 20 kΩ</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Target Resistance Combination Suggester -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div>
+            <div class="flex items-center gap-2.5 mb-1 pb-2 border-b border-slate-100">
+              <span class="px-2 py-0.5 rounded-md bg-emerald-600 text-white text-xs font-bold">ツール 2</span>
+              <h2 class="text-lg font-bold text-slate-900">欲しい抵抗値を作る組み合わせ提案ツール</h2>
+            </div>
+            <p class="text-xs text-slate-500">目標の抵抗値と手持ちの抵抗値を入れると、直列・並列・直並列（最大3本）の近い組み合わせを複数提案します。</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          <div class="lg:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div>
+              <label for="comb-target" class="block text-xs font-semibold text-slate-700 mb-1">欲しい抵抗値 (目標値)</label>
+              <div class="flex gap-2">
+                <input id="comb-target" type="number" step="any" min="0.01" value="3.3" class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+                <select id="comb-target-u" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-sm">
+                  <option value="1">Ω</option>
+                  <option value="1000" selected>kΩ</option>
+                  <option value="1000000">MΩ</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label for="comb-stock" class="text-xs font-semibold text-slate-700">手持ちの抵抗値 (カンマ/スペース区切り)</label>
+                <button type="button" id="comb-fill-e12" class="text-[11px] text-sky-600 hover:underline font-medium">よく使う値をセット</button>
+              </div>
+              <textarea id="comb-stock" rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-mono-num text-xs focus:ring-2 focus:ring-sky-500 focus:outline-none">1k, 2.2k, 4.7k, 10k</textarea>
+            </div>
+
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2 text-xs text-slate-600">
+                <label for="comb-max-n" class="font-semibold">最大本数:</label>
+                <select id="comb-max-n" class="px-2 py-1 rounded border border-slate-300 bg-white text-xs">
+                  <option value="2">2本まで</option>
+                  <option value="3" selected>3本まで</option>
+                </select>
+              </div>
+              <button type="button" id="comb-run-btn" class="px-4 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold transition">組み合わせを提案</button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7">
+            <div id="comb-results" class="space-y-2"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TAB 5: RC TIME CONSTANT & FILTER ==================== -->
+    <section id="panel-rc" class="tab-panel hidden space-y-6">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="mb-5">
+          <h2 class="text-lg font-bold text-slate-900">RC 時定数・ローパス / ハイパスフィルタ</h2>
+          <p class="text-xs text-slate-500">抵抗 R とコンデンサ C から、充放電の時定数 τ とカットオフ周波数 fc (-3dB) を計算します。</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div>
+              <label for="rc-r" class="block text-xs font-semibold text-slate-700 mb-1">抵抗 R</label>
+              <div class="flex gap-2">
+                <input id="rc-r" type="number" step="any" min="0.01" value="10" class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+                <select id="rc-r-u" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-sm">
+                  <option value="1">Ω</option>
+                  <option value="1000" selected>kΩ</option>
+                  <option value="1000000">MΩ</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="rc-c" class="block text-xs font-semibold text-slate-700 mb-1">コンデンサ C</label>
+              <div class="flex gap-2">
+                <input id="rc-c" type="number" step="any" min="0.01" value="0.1" class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-white font-mono-num text-sm" />
+                <select id="rc-c-u" class="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-sm">
+                  <option value="1e-12">pF</option>
+                  <option value="1e-9">nF</option>
+                  <option value="1e-6" selected>µF</option>
+                </select>
+              </div>
+            </div>
+            <div class="bg-slate-900 text-slate-300 p-3.5 rounded-xl text-xs font-mono-num space-y-1">
+              <div>時定数 τ = R × C</div>
+              <div>カットオフ周波数 fc = 1 / (2π × R × C)</div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3 content-start">
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-4">
+              <span class="text-xs text-sky-700 font-medium">カットオフ周波数 fc (-3dB)</span>
+              <div id="rc-out-fc" class="text-2xl font-bold font-mono-num text-sky-950 mt-0.5">159.15 Hz</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <span class="text-xs text-slate-500 font-medium">時定数 τ (63.2% 充電)</span>
+              <div id="rc-out-tau" class="text-2xl font-bold font-mono-num text-slate-900 mt-0.5">1.00 ms</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <span class="text-xs text-slate-500 font-medium">3τ (95.0% 充電)</span>
+              <div id="rc-out-3tau" class="text-xl font-bold font-mono-num text-slate-900 mt-0.5">3.00 ms</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <span class="text-xs text-slate-500 font-medium">5τ (99.3% ほぼ満充電)</span>
+              <div id="rc-out-5tau" class="text-xl font-bold font-mono-num text-slate-900 mt-0.5">5.00 ms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // ==================== UTILITIES ====================
+    function formatUnit(val, unit, decimals = 3) {
+      if (!isFinite(val) || isNaN(val)) return '---';
+      const abs = Math.abs(val);
+      if (abs === 0) return '0 ' + unit;
+      const prefixes = [
+        { v: 1e6, p: 'M' },
+        { v: 1e3, p: 'k' },
+        { v: 1, p: '' },
+        { v: 1e-3, p: 'm' },
+        { v: 1e-6, p: 'µ' },
+        { v: 1e-9, p: 'n' },
+        { v: 1e-12, p: 'p' }
+      ];
+      for (const item of prefixes) {
+        if (abs >= item.v) {
+          const scaled = val / item.v;
+          const numStr = parseFloat(scaled.toPrecision(decimals)).toString();
+          return `${numStr} ${item.p}${unit}`;
+        }
+      }
+      return `${val.toExponential(2)} ${unit}`;
+    }
+
+    // ==================== TAB NAVIGATION ====================
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        tabBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        tabPanels.forEach(p => {
+          p.classList.toggle('hidden', p.id !== `panel-${target}`);
+        });
+        if (target === 'ne555') draw555Wave();
+      });
+    });
+
+    // ==================== 1. RESISTOR COLOR CODE ====================
+    const COLORS = [
+      { id: 'black',  name: '黒', hex: '#1e293b', text: '#ffffff', digit: 0, mult: 1,       tol: null },
+      { id: 'brown',  name: '茶', hex: '#78350f', text: '#ffffff', digit: 1, mult: 10,      tol: 1 },
+      { id: 'red',    name: '赤', hex: '#dc2626', text: '#ffffff', digit: 2, mult: 100,     tol: 2 },
+      { id: 'orange', name: '橙', hex: '#f97316', text: '#ffffff', digit: 3, mult: 1000,    tol: null },
+      { id: 'yellow', name: '黄', hex: '#eab308', text: '#0f172a', digit: 4, mult: 10000,   tol: null },
+      { id: 'green',  name: '緑', hex: '#16a34a', text: '#ffffff', digit: 5, mult: 100000,  tol: 0.5 },
+      { id: 'blue',   name: '青', hex: '#2563eb', text: '#ffffff', digit: 6, mult: 1000000, tol: 0.25 },
+      { id: 'violet', name: '紫', hex: '#9333ea', text: '#ffffff', digit: 7, mult: 10000000,tol: 0.1 },
+      { id: 'grey',   name: '灰', hex: '#64748b', text: '#ffffff', digit: 8, mult: null,    tol: 0.05 },
+      { id: 'white',  name: '白', hex: '#f8fafc', text: '#0f172a', digit: 9, mult: null,    tol: null },
+      { id: 'gold',   name: '金', hex: '#d97706', text: '#ffffff', digit: null, mult: 0.1,  tol: 5 },
+      { id: 'silver', name: '銀', hex: '#cbd5e1', text: '#0f172a', digit: null, mult: 0.01, tol: 10 }
+    ];
+
+    let resMode = 4; // 4 or 5
+    let activeBandKey = 'd1';
+    let resBands = { d1: 4, d2: 7, d3: 0, mult: 2, tol: 10 }; // 4.7k ±5%
+
+    function getResistorSlots() {
+      return resMode === 4
+        ? [
+            { key: 'd1',   short: '第1帯', label: '第1帯 (10の位)', filter: c => c.digit !== null && c.digit !== 0, svgId: 'svg-band-0' },
+            { key: 'd2',   short: '第2帯', label: '第2帯 (1の位)',  filter: c => c.digit !== null, svgId: 'svg-band-1' },
+            { key: 'mult', short: '第3帯', label: '第3帯 (乗数)',    filter: c => c.mult !== null,  svgId: 'svg-band-2' },
+            { key: 'tol',  short: '第4帯', label: '第4帯 (許容差)',  filter: c => c.tol !== null,   svgId: 'svg-band-tol' }
+          ]
+        : [
+            { key: 'd1',   short: '第1帯', label: '第1帯 (100の位)', filter: c => c.digit !== null && c.digit !== 0, svgId: 'svg-band-0' },
+            { key: 'd2',   short: '第2帯', label: '第2帯 (10の位)',  filter: c => c.digit !== null, svgId: 'svg-band-1' },
+            { key: 'd3',   short: '第3帯', label: '第3帯 (1の位)',   filter: c => c.digit !== null, svgId: 'svg-band-2' },
+            { key: 'mult', short: '第4帯', label: '第4帯 (乗数)',    filter: c => c.mult !== null,  svgId: 'svg-band-3' },
+            { key: 'tol',  short: '第5帯', label: '第5帯 (許容差)',  filter: c => c.tol !== null,   svgId: 'svg-band-tol' }
+          ];
+    }
+
+    function formatBandSub(key, c) {
+      if (key.startsWith('d')) return c.digit;
+      if (key === 'mult') return c.mult >= 1e6 ? `×${c.mult/1e6}M` : c.mult >= 1e3 ? `×${c.mult/1e3}k` : `×${c.mult}`;
+      return `±${c.tol}%`;
+    }
+
+    function renderResistorSelectors() {
+      const slots = getResistorSlots();
+      if (!slots.some(s => s.key === activeBandKey)) activeBandKey = 'd1';
+
+      const tabsEl = document.getElementById('res-band-tabs');
+      tabsEl.className = `grid grid-cols-2 ${resMode === 4 ? 'sm:grid-cols-4' : 'sm:grid-cols-5'} gap-2 mb-4`;
+      tabsEl.innerHTML = '';
+
+      slots.forEach(slot => {
+        const c = COLORS[resBands[slot.key]];
+        const isActive = slot.key === activeBandKey;
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = `flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left transition ${
+          isActive
+            ? 'bg-white border-sky-500 ring-2 ring-sky-500/30 shadow-sm'
+            : 'bg-white/70 border-slate-200 hover:bg-white hover:border-slate-300'
+        }`;
+        tab.innerHTML = `
+          <span class="w-4 h-7 rounded border border-slate-300 shrink-0" style="background-color:${c.hex}"></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[10px] font-semibold ${isActive ? 'text-sky-600' : 'text-slate-400'}">${slot.label}</span>
+            <span class="block text-xs font-bold text-slate-800 truncate">${c.name} <span class="font-mono-num font-normal text-slate-500">(${formatBandSub(slot.key, c)})</span></span>
+          </span>
+        `;
+        tab.addEventListener('click', () => {
+          activeBandKey = slot.key;
+          renderResistorSelectors();
+          updateResistorDisplay();
+        });
+        tabsEl.appendChild(tab);
+      });
+
+      // Render single spacious high-contrast palette for activeBandKey
+      const activeSlot = slots.find(s => s.key === activeBandKey);
+      const palEl = document.getElementById('res-active-palette');
+      palEl.innerHTML = '';
+
+      COLORS.forEach((c, idx) => {
+        if (!activeSlot.filter(c)) return;
+        const isSelected = resBands[activeSlot.key] === idx;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `color-chip flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left bg-white transition ${
+          isSelected
+            ? 'border-sky-600 ring-2 ring-sky-500 shadow-sm'
+            : 'border-slate-200 hover:border-slate-400 hover:shadow-sm'
+        }`;
+        btn.innerHTML = `
+          <span class="w-6 h-6 rounded-full border border-slate-300 shrink-0 shadow-inner" style="background-color:${c.hex}"></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs font-bold text-slate-900">${c.name}</span>
+            <span class="block text-[11px] font-mono-num font-semibold text-slate-500">${formatBandSub(activeSlot.key, c)}</span>
+          </span>
+        `;
+        btn.addEventListener('click', () => {
+          resBands[activeSlot.key] = idx;
+          const autoNext = document.getElementById('res-auto-next');
+          if (autoNext && autoNext.checked) {
+            const curIdx = slots.findIndex(s => s.key === activeSlot.key);
+            if (curIdx >= 0 && curIdx < slots.length - 1) {
+              activeBandKey = slots[curIdx + 1].key;
+            }
+          }
+          renderResistorSelectors();
+          updateResistorDisplay();
+        });
+        palEl.appendChild(btn);
+      });
+    }
+
+    function updateResistorDisplay() {
+      const c1 = COLORS[resBands.d1];
+      const c2 = COLORS[resBands.d2];
+      const c3 = COLORS[resBands.d3];
+      const cm = COLORS[resBands.mult];
+      const ct = COLORS[resBands.tol];
+
+      document.getElementById('svg-band-0').setAttribute('fill', c1.hex);
+      document.getElementById('svg-band-1').setAttribute('fill', c2.hex);
+
+      const band3El = document.getElementById('svg-band-3');
+      if (resMode === 4) {
+        document.getElementById('svg-band-2').setAttribute('fill', cm.hex);
+        band3El.classList.add('hidden');
+      } else {
+        document.getElementById('svg-band-2').setAttribute('fill', c3.hex);
+        band3El.setAttribute('fill', cm.hex);
+        band3El.classList.remove('hidden');
+      }
+      document.getElementById('svg-band-tol').setAttribute('fill', ct.hex);
+
+      // Move active ring indicator on SVG
+      const slots = getResistorSlots();
+      const activeSlot = slots.find(s => s.key === activeBandKey);
+      const ringEl = document.getElementById('svg-band-ring');
+      if (activeSlot && ringEl) {
+        const targetRect = document.getElementById(activeSlot.svgId);
+        if (targetRect) {
+          const rx = parseFloat(targetRect.getAttribute('x')) - 3;
+          const ry = parseFloat(targetRect.getAttribute('y')) - 3;
+          const rw = parseFloat(targetRect.getAttribute('width')) + 6;
+          const rh = parseFloat(targetRect.getAttribute('height')) + 6;
+          ringEl.setAttribute('x', rx);
+          ringEl.setAttribute('y', ry);
+          ringEl.setAttribute('width', rw);
+          ringEl.setAttribute('height', rh);
+        }
+      }
+
+      const sig = resMode === 4
+        ? (c1.digit * 10 + c2.digit)
+        : (c1.digit * 100 + c2.digit * 10 + c3.digit);
+      const ohm = sig * cm.mult;
+      const tolPct = ct.tol;
+      const minOhm = ohm * (1 - tolPct / 100);
+      const maxOhm = ohm * (1 + tolPct / 100);
+
+      document.getElementById('res-result-main').textContent = formatUnit(ohm, 'Ω', 4);
+      document.getElementById('res-result-tol').textContent = `許容差 ±${tolPct}%`;
+      document.getElementById('res-result-min').textContent = formatUnit(minOhm, 'Ω', 4);
+      document.getElementById('res-result-max').textContent = formatUnit(maxOhm, 'Ω', 4);
+
+      const labelsEl = document.getElementById('res-band-labels');
+      const bandNames = resMode === 4
+        ? [c1.name, c2.name, cm.name, ct.name]
+        : [c1.name, c2.name, c3.name, cm.name, ct.name];
+      labelsEl.innerHTML = bandNames.map((n, i) => `<span class="px-2 py-0.5 bg-white border border-slate-200 rounded">${i+1}: ${n}</span>`).join('');
+    }
+
+    // Click SVG bands to select that band
+    ['svg-band-0', 'svg-band-1', 'svg-band-2', 'svg-band-3', 'svg-band-tol'].forEach(id => {
+      document.getElementById(id).addEventListener('click', () => {
+        const slots = getResistorSlots();
+        const found = slots.find(s => s.svgId === id);
+        if (found) {
+          activeBandKey = found.key;
+          renderResistorSelectors();
+          updateResistorDisplay();
+        }
+      });
+    });
+
+    function applyOhmToBands(targetOhm, tolVal = 5) {
+      if (!targetOhm || targetOhm <= 0) return;
+      const tolIdx = COLORS.findIndex(c => c.tol === tolVal);
+      if (tolIdx >= 0) resBands.tol = tolIdx;
+
+      const digitsNeeded = resMode === 4 ? 2 : 3;
+      const exp = Math.floor(Math.log10(targetOhm)) - (digitsNeeded - 1);
+      const multVal = Math.pow(10, exp);
+      let sig = Math.round(targetOhm / multVal);
+
+      const maxSig = resMode === 4 ? 99 : 999;
+      if (sig > maxSig) {
+        sig = Math.round(sig / 10);
+      }
+
+      const multIdx = COLORS.findIndex(c => c.mult !== null && Math.abs(c.mult - (targetOhm / sig)) / (targetOhm / sig) < 0.05);
+      // Fallback exact power of 10
+      const cleanMult = Math.pow(10, Math.round(Math.log10(targetOhm / sig)));
+      const finalMultIdx = multIdx >= 0 ? multIdx : COLORS.findIndex(c => c.mult === cleanMult);
+
+      const sStr = String(sig).padStart(digitsNeeded, '0');
+      resBands.d1 = COLORS.findIndex(c => c.digit === parseInt(sStr[0], 10));
+      resBands.d2 = COLORS.findIndex(c => c.digit === parseInt(sStr[1], 10));
+      if (resMode === 5) {
+        resBands.d3 = COLORS.findIndex(c => c.digit === parseInt(sStr[2], 10));
+      }
+      if (finalMultIdx >= 0) resBands.mult = finalMultIdx;
+
+      renderResistorSelectors();
+      updateResistorDisplay();
+
+      const actual = sig * COLORS[resBands.mult].mult;
+      const noteEl = document.getElementById('res-rev-note');
+      if (Math.abs(actual - targetOhm) / targetOhm > 0.005) {
+        noteEl.textContent = `最も近い表現値: ${formatUnit(actual, 'Ω', 4)}`;
+      } else {
+        noteEl.textContent = `変換完了: ${formatUnit(actual, 'Ω', 4)}`;
+      }
+    }
+
+    document.getElementById('res-mode-4').addEventListener('click', () => {
+      resMode = 4;
+      document.getElementById('res-mode-4').className = 'px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm';
+      document.getElementById('res-mode-5').className = 'px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900';
+      renderResistorSelectors();
+      updateResistorDisplay();
+    });
+
+    document.getElementById('res-mode-5').addEventListener('click', () => {
+      resMode = 5;
+      document.getElementById('res-mode-5').className = 'px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm';
+      document.getElementById('res-mode-4').className = 'px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900';
+      renderResistorSelectors();
+      updateResistorDisplay();
+    });
+
+    document.querySelectorAll('.res-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        applyOhmToBands(parseFloat(btn.dataset.ohm), 5);
+      });
+    });
+
+    function triggerReverseLookup() {
+      const val = parseFloat(document.getElementById('res-rev-val').value);
+      const unit = parseFloat(document.getElementById('res-rev-unit').value);
+      const tol = parseFloat(document.getElementById('res-rev-tol').value);
+      if (val > 0) applyOhmToBands(val * unit, tol);
+    }
+    document.getElementById('res-rev-btn').addEventListener('click', triggerReverseLookup);
+    ['res-rev-val', 'res-rev-unit', 'res-rev-tol'].forEach(id => {
+      document.getElementById(id).addEventListener('input', triggerReverseLookup);
+    });
+
+
+    // ==================== 2. NE555 TIMER ====================
+    let n555State = { thigh: 0.54, tlow: 0.47, period: 1.01, duty: 53.4 };
+
+    function calc555Astable() {
+      const r1 = (parseFloat(document.getElementById('n555-r1').value) || 0) * parseFloat(document.getElementById('n555-r1-unit').value);
+      const r2 = (parseFloat(document.getElementById('n555-r2').value) || 0) * parseFloat(document.getElementById('n555-r2-unit').value);
+      const c  = (parseFloat(document.getElementById('n555-c').value)  || 0) * parseFloat(document.getElementById('n555-c-unit').value);
+
+      if (r1 <= 0 || r2 <= 0 || c <= 0) return;
+
+      const ln2 = Math.LN2;
+      const tHigh = ln2 * (r1 + r2) * c;
+      const tLow  = ln2 * r2 * c;
+      const period = tHigh + tLow;
+      const freq = 1 / period;
+      const duty = ((r1 + r2) / (r1 + 2 * r2)) * 100;
+
+      n555State = { thigh: tHigh, tlow: tLow, period, duty };
+
+      document.getElementById('n555-out-freq').textContent = formatUnit(freq, 'Hz', 4);
+      document.getElementById('n555-out-period').textContent = formatUnit(period, 's', 4);
+      document.getElementById('n555-out-duty').textContent = `${duty.toFixed(1)} %`;
+      document.getElementById('n555-out-thigh').textContent = formatUnit(tHigh, 's', 4);
+      document.getElementById('n555-out-tlow').textContent = formatUnit(tLow, 's', 4);
+
+      const noteEl = document.getElementById('n555-out-note');
+      if (r1 < 1000) {
+        noteEl.textContent = 'R1が小さすぎると消費電流が増えます (1kΩ以上推奨)';
+        noteEl.className = 'text-xs text-amber-600 font-medium mt-1';
+      } else if (duty > 90) {
+        noteEl.textContent = 'R1 >> R2 のためHigh時間が長くなります';
+        noteEl.className = 'text-xs text-sky-700 font-medium mt-1';
+      } else {
+        noteEl.textContent = '標準的な安定動作範囲です';
+        noteEl.className = 'text-xs text-emerald-700 font-medium mt-1';
+      }
+
+      draw555Wave();
+    }
+
+    function draw555Wave() {
+      const canvas = document.getElementById('n555-wave-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      ctx.clearRect(0, 0, W, H);
+
+      // Grid
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 1;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 30) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+
+      // 1/3 Vcc & 2/3 Vcc lines for Vc (bottom half: y=130..205)
+      const vcBottom = 205;
+      const vcTop = 125;
+      const y13 = vcBottom - (vcBottom - vcTop) * (1/3);
+      const y23 = vcBottom - (vcBottom - vcTop) * (2/3);
+
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = '#475569';
+      ctx.beginPath(); ctx.moveTo(0, y23); ctx.lineTo(W, y23); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, y13); ctx.lineTo(W, y13); ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px monospace';
+      ctx.fillText('2/3 Vcc', 6, y23 - 4);
+      ctx.fillText('1/3 Vcc', 6, y13 + 11);
+      ctx.fillText('OUT (Pin 3)', 6, 20);
+      ctx.fillText('Vc (Pin 2/6)', 6, 122);
+
+      const cycles = 3;
+      const padL = 65;
+      const usableW = W - padL - 15;
+      const cycleW = usableW / cycles;
+      const highRatio = Math.min(0.95, Math.max(0.05, n555State.duty / 100));
+
+      // Draw OUT square wave (top half: y=30..95)
+      const outHighY = 30;
+      const outLowY = 95;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < cycles; i++) {
+        const x0 = padL + i * cycleW;
+        const xMid = x0 + cycleW * highRatio;
+        const xEnd = x0 + cycleW;
+        if (i === 0) ctx.moveTo(x0, outLowY);
+        ctx.lineTo(x0, outHighY);
+        ctx.lineTo(xMid, outHighY);
+        ctx.lineTo(xMid, outLowY);
+        ctx.lineTo(xEnd, outLowY);
+      }
+      ctx.stroke();
+
+      // Draw Vc exponential charge/discharge (bottom half)
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      for (let i = 0; i < cycles; i++) {
+        const x0 = padL + i * cycleW;
+        const xMid = x0 + cycleW * highRatio;
+        const xEnd = x0 + cycleW;
+        // Charge from 1/3 to 2/3
+        const steps = 20;
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const x = x0 + (xMid - x0) * t;
+          // normalized exponential curve from 1/3 to 2/3
+          const val = (1/3) + (1/3) * ((1 - Math.exp(-t * 1.4)) / (1 - Math.exp(-1.4)));
+          const y = vcBottom - (vcBottom - vcTop) * val;
+          if (i === 0 && s === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        // Discharge from 2/3 to 1/3
+        for (let s = 1; s <= steps; s++) {
+          const t = s / steps;
+          const x = xMid + (xEnd - xMid) * t;
+          const val = (2/3) - (1/3) * ((1 - Math.exp(-t * 1.4)) / (1 - Math.exp(-1.4)));
+          const y = vcBottom - (vcBottom - vcTop) * val;
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.stroke();
+    }
+
+    function calc555Mono() {
+      const r = (parseFloat(document.getElementById('n555-m-r').value) || 0) * parseFloat(document.getElementById('n555-m-r-unit').value);
+      const c = (parseFloat(document.getElementById('n555-m-c').value) || 0) * parseFloat(document.getElementById('n555-m-c-unit').value);
+      if (r <= 0 || c <= 0) return;
+      const t = Math.log(3) * r * c;
+      const formatted = formatUnit(t, 's', 4);
+      document.getElementById('n555-m-out').textContent = formatted;
+      document.getElementById('n555-m-svg-label').textContent = `T = ${formatted}`;
+    }
+
+
+
+    ['n555-r1', 'n555-r1-unit', 'n555-r2', 'n555-r2-unit', 'n555-c', 'n555-c-unit'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calc555Astable);
+    });
+    ['n555-m-r', 'n555-m-r-unit', 'n555-m-c', 'n555-m-c-unit'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calc555Mono);
+    });
+
+    document.querySelectorAll('.n555-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('n555-r1').value = btn.dataset.r1;
+        document.getElementById('n555-r1-unit').value = btn.dataset.r1u;
+        document.getElementById('n555-r2').value = btn.dataset.r2;
+        document.getElementById('n555-r2-unit').value = btn.dataset.r2u;
+        document.getElementById('n555-c').value = btn.dataset.c;
+        document.getElementById('n555-c-unit').value = btn.dataset.cu;
+        calc555Astable();
+      });
+    });
+
+    document.getElementById('n555-mode-astable').addEventListener('click', () => {
+      document.getElementById('n555-astable-box').classList.remove('hidden');
+      document.getElementById('n555-mono-box').classList.add('hidden');
+      document.getElementById('n555-mode-astable').className = 'px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm';
+      document.getElementById('n555-mode-mono').className = 'px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900';
+      draw555Wave();
+    });
+    document.getElementById('n555-mode-mono').addEventListener('click', () => {
+      document.getElementById('n555-astable-box').classList.add('hidden');
+      document.getElementById('n555-mono-box').classList.remove('hidden');
+      document.getElementById('n555-mode-mono').className = 'px-3 py-1 rounded-md text-xs font-semibold bg-white text-slate-900 shadow-sm';
+      document.getElementById('n555-mode-astable').className = 'px-3 py-1 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900';
+      calc555Mono();
+    });
+
+    // ==================== 3. LED RESISTOR ====================
+    const E24 = [1.0, 1.1, 1.2, 1.3, 1.5, 1.6, 1.8, 2.0, 2.2, 2.4, 2.7, 3.0, 3.3, 3.6, 3.9, 4.3, 4.7, 5.1, 5.6, 6.2, 6.8, 7.5, 8.2, 9.1];
+    function nextE24(ohm) {
+      if (ohm <= 0) return 0;
+      const exp = Math.floor(Math.log10(ohm));
+      const base = Math.pow(10, exp);
+      const norm = ohm / base;
+      for (const v of E24) {
+        if (v >= norm - 1e-6) return v * base;
+      }
+      return 10 * base;
+    }
+
+    function calcLED() {
+      const vcc = parseFloat(document.getElementById('led-vcc').value) || 0;
+      const vf  = parseFloat(document.getElementById('led-vf').value) || 0;
+      const ifm = parseFloat(document.getElementById('led-if').value) || 0;
+      const cnt = parseInt(document.getElementById('led-count').value, 10) || 1;
+
+      const warnEl = document.getElementById('led-warning');
+      const resEl  = document.getElementById('led-results');
+      const vDrop = vcc - vf * cnt;
+
+      if (vDrop <= 0 || ifm <= 0) {
+        warnEl.classList.remove('hidden');
+        resEl.classList.add('opacity-40');
+        return;
+      }
+      warnEl.classList.add('hidden');
+      resEl.classList.remove('opacity-40');
+
+      const iA = ifm / 1000;
+      const rExact = vDrop / iA;
+      const rE24 = nextE24(rExact);
+      const pWatt = vDrop * iA;
+      const actualIf = (vDrop / rE24) * 1000;
+
+      document.getElementById('led-out-r').textContent = formatUnit(rExact, 'Ω', 3);
+      document.getElementById('led-out-e24').textContent = formatUnit(rE24, 'Ω', 3);
+      document.getElementById('led-out-p').textContent = formatUnit(pWatt, 'W', 3);
+      document.getElementById('led-out-actual-if').textContent = `${actualIf.toFixed(1)} mA`;
+      const svgR   = document.getElementById('svg-led-r');
+      if (svgR)   svgR.textContent   = formatUnit(rE24, 'Ω', 3);
+
+
+      const pSafe = pWatt * 2;
+      let wattRec = '1/4 W (250mW)';
+      if (pSafe > 1) wattRec = '2 W 以上';
+      else if (pSafe > 0.5) wattRec = '1 W';
+      else if (pSafe > 0.25) wattRec = '1/2 W (500mW)';
+      else if (pSafe <= 0.125) wattRec = '1/4 W (または 1/8 W)';
+      document.getElementById('led-out-watt').textContent = wattRec;
+    }
+
+    ['led-vcc', 'led-vf', 'led-if', 'led-count'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calcLED);
+    });
+    document.querySelectorAll('.led-vcc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('led-vcc').value = btn.dataset.v;
+        calcLED();
+      });
+    });
+    document.querySelectorAll('.led-vf-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('led-vf').value = btn.dataset.vf;
+        calcLED();
+      });
+    });
+
+    // ==================== 4. VOLTAGE DIVIDER, OHM, SERIES/PARALLEL ====================
+    function calcDivider() {
+      const vin = parseFloat(document.getElementById('div-vin').value) || 0;
+      const r1  = (parseFloat(document.getElementById('div-r1').value) || 0) * parseFloat(document.getElementById('div-r1-u').value);
+      const r2  = (parseFloat(document.getElementById('div-r2').value) || 0) * parseFloat(document.getElementById('div-r2-u').value);
+      if (r1 + r2 <= 0) return;
+
+      const vout = vin * (r2 / (r1 + r2));
+      const i = vin / (r1 + r2);
+      const p = vin * i;
+
+      document.getElementById('div-out-v').textContent = `${vout.toFixed(3)} V`;
+      document.getElementById('div-out-ip').textContent = `${formatUnit(i, 'A', 3)} / ${formatUnit(p, 'W', 3)}`;
+      document.getElementById('svg-div-vin').textContent = `Vin = ${vin}V`;
+      document.getElementById('svg-div-vout').textContent = `${vout.toFixed(2)} V`;
+    }
+    ['div-vin', 'div-r1', 'div-r1-u', 'div-r2', 'div-r2-u'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calcDivider);
+    });
+
+    document.getElementById('ohm-calc-btn').addEventListener('click', () => {
+      const vEl = document.getElementById('ohm-v');
+      const iEl = document.getElementById('ohm-i');
+      const rEl = document.getElementById('ohm-r');
+      const pEl = document.getElementById('ohm-p');
+      const msgEl = document.getElementById('ohm-msg');
+
+      const hasV = vEl.value !== '';
+      const hasI = iEl.value !== '';
+      const hasR = rEl.value !== '';
+      const hasP = pEl.value !== '';
+      const count = [hasV, hasI, hasR, hasP].filter(Boolean).length;
+
+      if (count !== 2) {
+        msgEl.textContent = 'ちょうど2つの値を入力してください (他は空欄に)。';
+        msgEl.className = 'text-xs text-rose-600 font-medium';
+        return;
+      }
+
+      let V = parseFloat(vEl.value);
+      let I = parseFloat(iEl.value) / 1000; // mA -> A
+      let R = parseFloat(rEl.value);
+      let P = parseFloat(pEl.value) / 1000; // mW -> W
+
+      if (hasV && hasI) { R = V / I; P = V * I; }
+      else if (hasV && hasR) { I = V / R; P = (V * V) / R; }
+      else if (hasV && hasP) { I = P / V; R = (V * V) / P; }
+      else if (hasI && hasR) { V = I * R; P = I * I * R; }
+      else if (hasI && hasP) { V = P / I; R = P / (I * I); }
+      else if (hasR && hasP) { V = Math.sqrt(P * R); I = Math.sqrt(P / R); }
+
+      if (![V, I, R, P].every(x => isFinite(x) && x >= 0)) {
+        msgEl.textContent = '有効な正の数値を入力してください。';
+        msgEl.className = 'text-xs text-rose-600 font-medium';
+        return;
+      }
+
+      vEl.value = parseFloat(V.toPrecision(4));
+      iEl.value = parseFloat((I * 1000).toPrecision(4));
+      rEl.value = parseFloat(R.toPrecision(4));
+      pEl.value = parseFloat((P * 1000).toPrecision(4));
+      msgEl.textContent = '計算完了!';
+      msgEl.className = 'text-xs text-emerald-600 font-medium';
+    });
+
+    document.getElementById('ohm-clear').addEventListener('click', () => {
+      ['ohm-v', 'ohm-i', 'ohm-r', 'ohm-p'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('ohm-msg').textContent = '';
+    });
+
+    function parseResistorList(str) {
+      return str.split(/[\s,]+/).filter(Boolean).map(tok => {
+        const m = tok.trim().match(/^([0-9]*\.?[0-9]+)\s*([kKmM]?)$/);
+        if (!m) return NaN;
+        let val = parseFloat(m[1]);
+        if (m[2].toLowerCase() === 'k') val *= 1e3;
+        else if (m[2].toUpperCase() === 'M') val *= 1e6;
+        return val;
+      }).filter(v => !isNaN(v) && v > 0);
+    }
+
+    function calcSeriesParallel() {
+      const vals = parseResistorList(document.getElementById('sp-input').value);
+      if (vals.length === 0) {
+        document.getElementById('sp-series').textContent = '---';
+        document.getElementById('sp-parallel').textContent = '---';
+        return;
+      }
+      const series = vals.reduce((a, b) => a + b, 0);
+      const parallel = 1 / vals.reduce((a, b) => a + 1 / b, 0);
+      const sStr = formatUnit(series, 'Ω', 4);
+      const pStr = formatUnit(parallel, 'Ω', 4);
+      document.getElementById('sp-series').textContent = sStr;
+      document.getElementById('sp-parallel').textContent = pStr;
+      const svgS = document.getElementById('svg-sp-series');
+      const svgP = document.getElementById('svg-sp-parallel');
+      if (svgS) svgS.textContent = `合成: ${sStr}`;
+      if (svgP) svgP.textContent = `合成: ${pStr}`;
+    }
+    document.getElementById('sp-input').addEventListener('input', calcSeriesParallel);
+    document.querySelectorAll('.sp-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('sp-input').value = btn.dataset.val;
+        calcSeriesParallel();
+    suggestResistorCombinations();
+      });
+    });
+
+    // ==================== 5. RC FILTER / TIME CONSTANT ====================
+    function calcRC() {
+      const r = (parseFloat(document.getElementById('rc-r').value) || 0) * parseFloat(document.getElementById('rc-r-u').value);
+      const c = (parseFloat(document.getElementById('rc-c').value) || 0) * parseFloat(document.getElementById('rc-c-u').value);
+      if (r <= 0 || c <= 0) return;
+
+      const tau = r * c;
+      const fc = 1 / (2 * Math.PI * tau);
+      document.getElementById('rc-out-fc').textContent = formatUnit(fc, 'Hz', 4);
+      document.getElementById('rc-out-tau').textContent = formatUnit(tau, 's', 4);
+      document.getElementById('rc-out-3tau').textContent = formatUnit(3 * tau, 's', 4);
+      document.getElementById('rc-out-5tau').textContent = formatUnit(5 * tau, 's', 4);
+    }
+    ['rc-r', 'rc-r-u', 'rc-c', 'rc-c-u'].forEach(id => {
+      document.getElementById(id).addEventListener('input', calcRC);
+    });
+
+    // ==================== TARGET RESISTANCE COMBINATION SUGGESTER ====================
+    function suggestResistorCombinations() {
+      const targetVal = parseFloat(document.getElementById('comb-target').value) || 0;
+      const targetUnit = parseFloat(document.getElementById('comb-target-u').value) || 1;
+      const target = targetVal * targetUnit;
+      const stock = [...new Set(parseResistorList(document.getElementById('comb-stock').value))].sort((a, b) => a - b);
+      const maxN = parseInt(document.getElementById('comb-max-n').value, 10) || 3;
+      const outEl = document.getElementById('comb-results');
+
+      if (target <= 0 || stock.length === 0) {
+        outEl.innerHTML = '<div class="text-xs text-slate-500 p-4 bg-slate-50 rounded-xl border border-slate-200">目標抵抗値と手持ちの抵抗値を1つ以上入力してください。</div>';
+        return;
+      }
+
+      const fmt = v => formatUnit(v, 'Ω', 3).replace(' ', '');
+      const candidates = [];
+      const seen = new Set();
+
+      function addCand(val, expr, type, count) {
+        if (!isFinite(val) || val <= 0) return;
+        const key = `${expr}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const err = ((val - target) / target) * 100;
+        candidates.push({ val, expr, type, count, err, absErr: Math.abs(err) });
+      }
+
+      const n = stock.length;
+      // 1 resistor
+      for (let i = 0; i < n; i++) {
+        addCand(stock[i], `${fmt(stock[i])} (単体)`, '単体', 1);
+      }
+
+      // 2 resistors: Series & Parallel
+      for (let i = 0; i < n; i++) {
+        for (let j = i; j < n; j++) {
+          const a = stock[i], b = stock[j];
+          addCand(a + b, `${fmt(a)} + ${fmt(b)}`, '直列', 2);
+          addCand((a * b) / (a + b), `${fmt(a)} // ${fmt(b)}`, '並列', 2);
+        }
+      }
+
+      // 3 resistors: S+S+S, P//P//P, (P)+S, (S)//P
+      if (maxN >= 3) {
+        const lim = Math.min(n, 16); // guard combinatorics if many resistors entered
+        for (let i = 0; i < lim; i++) {
+          for (let j = i; j < lim; j++) {
+            for (let k = j; k < lim; k++) {
+              const a = stock[i], b = stock[j], c = stock[k];
+              addCand(a + b + c, `${fmt(a)} + ${fmt(b)} + ${fmt(c)}`, '直列', 3);
+              addCand(1 / (1/a + 1/b + 1/c), `${fmt(a)} // ${fmt(b)} // ${fmt(c)}`, '並列', 3);
+            }
+          }
+        }
+        // Mixed 3 resistors
+        for (let i = 0; i < lim; i++) {
+          for (let j = i; j < lim; j++) {
+            const a = stock[i], b = stock[j];
+            const p = (a * b) / (a + b);
+            const s = a + b;
+            for (let k = 0; k < lim; k++) {
+              const c = stock[k];
+              addCand(p + c, `(${fmt(a)} // ${fmt(b)}) + ${fmt(c)}`, '直並列', 3);
+              addCand((s * c) / (s + c), `(${fmt(a)} + ${fmt(b)}) // ${fmt(c)}`, '直並列', 3);
+            }
+          }
+        }
+      }
+
+      candidates.sort((x, y) => {
+        if (Math.abs(x.absErr - y.absErr) > 0.05) return x.absErr - y.absErr;
+        return x.count - y.count;
+      });
+
+      const top = candidates.slice(0, 8);
+      outEl.innerHTML = top.map((c, idx) => {
+        const badgeColor = c.absErr <= 1
+          ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+          : c.absErr <= 5
+            ? 'bg-sky-100 text-sky-800 border-sky-200'
+            : 'bg-amber-100 text-amber-800 border-amber-200';
+        const errStr = (c.err >= 0 ? '+' : '') + c.err.toFixed(2) + '%';
+        return `
+          <div class="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl border ${idx === 0 ? 'bg-sky-50/70 border-sky-300' : 'bg-slate-50 border-slate-200'}">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-white border border-slate-200 text-slate-600 shrink-0">${c.type}・${c.count}本</span>
+              <span class="font-mono-num text-sm font-bold text-slate-900 truncate">${c.expr}</span>
+            </div>
+            <div class="flex items-center gap-2.5 shrink-0">
+              <span class="font-mono-num text-sm font-bold text-sky-900">${formatUnit(c.val, 'Ω', 4)}</span>
+              <span class="px-2 py-0.5 rounded-md text-xs font-mono-num font-semibold border ${badgeColor}">${errStr}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('comb-run-btn').addEventListener('click', suggestResistorCombinations);
+    ['comb-target', 'comb-target-u', 'comb-stock', 'comb-max-n'].forEach(id => {
+      document.getElementById(id).addEventListener('input', suggestResistorCombinations);
+    });
+    document.getElementById('comb-fill-e12').addEventListener('click', () => {
+      document.getElementById('comb-stock').value = '100, 220, 330, 470, 1k, 2.2k, 3.3k, 4.7k, 10k, 22k, 47k, 100k';
+      suggestResistorCombinations();
+    });
+
+    // ==================== INIT ====================
+    renderResistorSelectors();
+    updateResistorDisplay();
+    calc555Astable();
+    calc555Mono();
+    calcLED();
+    calcDivider();
+    calcSeriesParallel();
+    calcRC();
+  </script>
+</body>
+</html>
